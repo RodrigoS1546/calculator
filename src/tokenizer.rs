@@ -37,11 +37,10 @@ impl From<String> for Token {
             Err(_) => {
                 if value.eq_ignore_ascii_case("ans") {
                     Self::Ans
-                }
-                else {
+                } else {
                     Self::Invalid
                 }
-            },
+            }
         }
     }
 }
@@ -53,15 +52,13 @@ pub fn tokenize(source: String) -> Option<Vec<Token>> {
     while let Some(c) = iterator.next() {
         if c.is_whitespace() {
             continue;
-        }
-        else if c.is_alphabetic() && c != 'x' {
+        } else if c.is_alphabetic() && c != 'x' {
             let mut literal = String::with_capacity(3);
             literal.push(c);
             while let Some(&d) = iterator.peek() {
                 if d.is_alphabetic() && d != 'x' {
                     literal.push(iterator.next().unwrap_or_default());
-                }
-                else {
+                } else {
                     break;
                 }
             }
@@ -70,8 +67,7 @@ pub fn tokenize(source: String) -> Option<Vec<Token>> {
                 return None;
             }
             tokens.push(token);
-        }
-        else if c.is_digit(10) {
+        } else if c.is_digit(10) {
             // tokenizing a decimal literal.
             let mut literal = String::new();
             literal.push(c);
@@ -80,8 +76,7 @@ pub fn tokenize(source: String) -> Option<Vec<Token>> {
                 if d == '.' {
                     if dot_appeared {
                         return None;
-                    }
-                    else {
+                    } else {
                         dot_appeared = true;
                     }
                     literal.push(iterator.next().unwrap_or_default());
@@ -97,8 +92,7 @@ pub fn tokenize(source: String) -> Option<Vec<Token>> {
                 return None;
             }
             tokens.push(token);
-        }
-        else {
+        } else {
             let token = c.into();
             if let Token::Invalid = token {
                 return None;

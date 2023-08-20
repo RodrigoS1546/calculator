@@ -70,22 +70,26 @@ impl NextExpression for IntoIter<Expression> {
                         Expression::Token(Token::OpenParenthesis) => {
                             open_count += 1;
                             expression.push(next);
-                        },
+                        }
                         Expression::Token(Token::CloseParenthesis) => {
                             close_count += 1;
                             if close_count > open_count {
                                 break;
                             }
                             expression.push(next);
-                        },
+                        }
                         _ => expression.push(next),
                     }
                 }
                 let sub_tree = parse_expressions(expression)?;
                 return Ok(Some(Expression::Tree(sub_tree)));
-            },
-            Expression::Token(Token::CloseParenthesis) => return Err(ParsingError::InvalidParenthesis),
-            Expression::Token(Token::Invalid) => panic!("An invalid token should never get to parsing stage."),
+            }
+            Expression::Token(Token::CloseParenthesis) => {
+                return Err(ParsingError::InvalidParenthesis)
+            }
+            Expression::Token(Token::Invalid) => {
+                panic!("An invalid token should never get to parsing stage.")
+            }
             _ => return Ok(Some(expr)),
         }
     }
@@ -97,14 +101,20 @@ macro_rules! parse_operator {
             match expr {
                 Expression::Token(Token::$op) => {
                     let last = match $buffer.pop() {
-                        None | Some(Expression::Token(Token::Add | Token::Sub | Token::Mul | Token::Div)) => {
+                        None
+                        | Some(Expression::Token(
+                            Token::Add | Token::Sub | Token::Mul | Token::Div,
+                        )) => {
                             return Err(ParsingError::ExpectedExpression);
                         }
                         Some(expr) => expr,
                     };
-            
+
                     let next = match $expressions.next_expression()? {
-                        None | Some(Expression::Token(Token::Add | Token::Sub | Token::Mul | Token::Div)) => {
+                        None
+                        | Some(Expression::Token(
+                            Token::Add | Token::Sub | Token::Mul | Token::Div,
+                        )) => {
                             return Err(ParsingError::ExpectedExpression);
                         }
                         Some(expr) => expr,
@@ -113,16 +123,16 @@ macro_rules! parse_operator {
                         token: Token::$op,
                         left: match last {
                             Expression::Token(lit) => Some(Box::new(ParseTree::new(lit))),
-                            Expression::Tree(tree) => Some(Box::new(tree)), 
+                            Expression::Tree(tree) => Some(Box::new(tree)),
                         },
                         right: match next {
                             Expression::Token(lit) => Some(Box::new(ParseTree::new(lit))),
-                            Expression::Tree(tree) => Some(Box::new(tree)), 
+                            Expression::Tree(tree) => Some(Box::new(tree)),
                         },
                     }));
                     $buffer.extend($expressions);
                     return parse_expressions($buffer);
-                },
+                }
                 _ => $buffer.push(expr),
             }
         }
@@ -134,24 +144,31 @@ macro_rules! parse_operator {
                     let operation = expr.unwrap_token();
                     let last = if let Token::Sub = operation {
                         match $buffer.pop() {
-                            Some(Expression::Token(Token::Add | Token::Sub | Token::Mul | Token::Div)) => {
+                            Some(Expression::Token(
+                                Token::Add | Token::Sub | Token::Mul | Token::Div,
+                            )) => {
                                 return Err(ParsingError::ExpectedExpression);
                             }
                             Some(expr) => expr,
                             None => Expression::Token(Token::Literal(dec!(0))),
                         }
-                    }
-                    else {
+                    } else {
                         match $buffer.pop() {
-                            None | Some(Expression::Token(Token::Add | Token::Sub | Token::Mul | Token::Div)) => {
+                            None
+                            | Some(Expression::Token(
+                                Token::Add | Token::Sub | Token::Mul | Token::Div,
+                            )) => {
                                 return Err(ParsingError::ExpectedExpression);
                             }
                             Some(expr) => expr,
                         }
                     };
-            
+
                     let next = match $expressions.next_expression()? {
-                        None | Some(Expression::Token(Token::Add | Token::Sub | Token::Mul | Token::Div)) => {
+                        None
+                        | Some(Expression::Token(
+                            Token::Add | Token::Sub | Token::Mul | Token::Div,
+                        )) => {
                             return Err(ParsingError::ExpectedExpression);
                         }
                         Some(expr) => expr,
@@ -160,16 +177,16 @@ macro_rules! parse_operator {
                         token: operation,
                         left: match last {
                             Expression::Token(lit) => Some(Box::new(ParseTree::new(lit))),
-                            Expression::Tree(tree) => Some(Box::new(tree)), 
+                            Expression::Tree(tree) => Some(Box::new(tree)),
                         },
                         right: match next {
                             Expression::Token(lit) => Some(Box::new(ParseTree::new(lit))),
-                            Expression::Tree(tree) => Some(Box::new(tree)), 
+                            Expression::Tree(tree) => Some(Box::new(tree)),
                         },
                     }));
                     $buffer.extend($expressions);
                     return parse_expressions($buffer);
-                },
+                }
                 _ => $buffer.push(expr),
             }
         }
@@ -194,7 +211,7 @@ fn parse_expressions(expressions: Vec<Expression>) -> Result<ParseTree, ParsingE
 
     expressions = buffer.into_iter();
     buffer = Vec::new();
-    
+
     parse_operator!(expressions, buffer, Mul, Div);
 
     expressions = buffer.into_iter();
@@ -206,5 +223,10 @@ fn parse_expressions(expressions: Vec<Expression>) -> Result<ParseTree, ParsingE
 }
 
 pub fn parse(tokens: Vec<Token>) -> Result<ParseTree, ParsingError> {
-    parse_expressions(tokens.into_iter().map(|token| Expression::Token(token)).collect())
+    parse_expressions(
+        tokens
+            .into_iter()
+            .map(|token| Expression::Token(token))
+            .collect(),
+    )
 }

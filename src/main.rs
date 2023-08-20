@@ -1,7 +1,7 @@
-mod tokenizer;
-mod parser;
 mod compute;
+mod parser;
 mod strings;
+mod tokenizer;
 
 use parser::parse;
 use strings::TrimInPlace;
@@ -19,7 +19,7 @@ fn main() {
             Err(_) => {
                 eprintln!("Error reading line from standard input.");
                 std::process::exit(1);
-            },
+            }
         };
 
         input.trim_in_place();
@@ -32,7 +32,7 @@ fn main() {
             None => {
                 println!("Invalid tokens.");
                 continue;
-            },
+            }
         };
 
         let tree = match parse(tokens) {
@@ -40,7 +40,7 @@ fn main() {
             Err(err) => {
                 println!("{:?}", err);
                 continue;
-            },
+            }
         };
 
         ans = compute_tree(tree, ans);
