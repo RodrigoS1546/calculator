@@ -10,6 +10,7 @@ pub enum Token {
     OpenParenthesis,
     CloseParenthesis,
     Literal(Decimal),
+    Ans,
     #[default]
     Invalid,
 }
@@ -33,7 +34,14 @@ impl From<String> for Token {
     fn from(value: String) -> Self {
         match value.parse::<Decimal>() {
             Ok(x) => Self::Literal(x),
-            Err(_) => Self::Invalid,
+            Err(_) => {
+                if value.eq_ignore_ascii_case("ans") {
+                    Self::Ans
+                }
+                else {
+                    Self::Invalid
+                }
+            },
         }
     }
 }
@@ -45,6 +53,23 @@ pub fn tokenize(source: String) -> Option<Vec<Token>> {
     while let Some(c) = iterator.next() {
         if c.is_whitespace() {
             continue;
+        }
+        else if c.is_alphabetic() && c != 'x' {
+            let mut literal = String::with_capacity(3);
+            literal.push(c);
+            while let Some(&d) = iterator.peek() {
+                if d.is_alphabetic() && d != 'x' {
+                    literal.push(iterator.next().unwrap_or_default());
+                }
+                else {
+                    break;
+                }
+            }
+            let token = literal.into();
+            if let Token::Invalid = token {
+                return None;
+            }
+            tokens.push(token);
         }
         else if c.is_digit(10) {
             // tokenizing a decimal literal.

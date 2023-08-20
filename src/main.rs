@@ -11,6 +11,7 @@ use crate::compute::compute_tree;
 
 fn main() {
     let mut input = String::new();
+    let mut ans = None;
 
     loop {
         match std::io::stdin().read_line(&mut input) {
@@ -42,7 +43,9 @@ fn main() {
             },
         };
 
-        match compute_tree(tree) {
+        ans = compute_tree(tree, ans);
+
+        match ans {
             Some(x) => println!("{x}"),
             None => println!("Syntax error"),
         }

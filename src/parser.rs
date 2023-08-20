@@ -33,6 +33,15 @@ enum Expression {
     Tree(ParseTree),
 }
 
+impl Expression {
+    fn unwrap_token(self) -> Token {
+        match self {
+            Self::Token(x) => x,
+            _ => panic!("Attempted to unwrap expression that was a tree."),
+        }
+    }
+}
+
 impl Default for Expression {
     fn default() -> Self {
         Self::Token(Token::default())
@@ -117,12 +126,48 @@ macro_rules! parse_operator {
             }
         }
     };
+    ($expressions:ident, $buffer:ident, $op:ident, $op2:ident) => {
+        while let Some(expr) = $expressions.next_expression()? {
+            match expr {
+                Expression::Token(Token::$op | Token::$op2) => {
+                    let last = match $buffer.pop() {
+                        None | Some(Expression::Token(Token::Add | Token::Sub | Token::Mul | Token::Div)) => {
+                            return Err(ParsingError::ExpectedExpression);
+                        }
+                        Some(expr) => expr,
+                    };
+            
+                    let next = match $expressions.next_expression()? {
+                        None | Some(Expression::Token(Token::Add | Token::Sub | Token::Mul | Token::Div)) => {
+                            return Err(ParsingError::ExpectedExpression);
+                        }
+                        Some(expr) => expr,
+                    };
+                    $buffer.push(Expression::Tree(ParseTree {
+                        token: expr.unwrap_token(),
+                        left: match last {
+                            Expression::Token(lit) => Some(Box::new(ParseTree::new(lit))),
+                            Expression::Tree(tree) => Some(Box::new(tree)), 
+                        },
+                        right: match next {
+                            Expression::Token(lit) => Some(Box::new(ParseTree::new(lit))),
+                            Expression::Tree(tree) => Some(Box::new(tree)), 
+                        },
+                    }));
+                    $buffer.extend($expressions);
+                    return parse_expressions($buffer);
+                },
+                _ => $buffer.push(expr),
+            }
+        }
+    };
 }
 
 fn parse_expressions(expressions: Vec<Expression>) -> Result<ParseTree, ParsingError> {
     if expressions.len() == 1 {
         match expressions.into_iter().next().unwrap_or_default() {
             Expression::Token(Token::Literal(x)) => return Ok(ParseTree::new(Token::Literal(x))),
+            Expression::Token(Token::Ans) => return Ok(ParseTree::new(Token::Ans)),
             Expression::Tree(tree) => return Ok(tree),
             _ => return Err(ParsingError::Unknown),
         }
@@ -137,22 +182,12 @@ fn parse_expressions(expressions: Vec<Expression>) -> Result<ParseTree, ParsingE
     expressions = buffer.into_iter();
     buffer = Vec::new();
     
-    parse_operator!(expressions, buffer, Mul);
+    parse_operator!(expressions, buffer, Mul, Div);
 
     expressions = buffer.into_iter();
     buffer = Vec::new();
 
-    parse_operator!(expressions, buffer, Div);
-
-    expressions = buffer.into_iter();
-    buffer = Vec::new();
-
-    parse_operator!(expressions, buffer, Add);
-
-    expressions = buffer.into_iter();
-    buffer = Vec::new();
-
-    parse_operator!(expressions, buffer, Sub);
+    parse_operator!(expressions, buffer, Add, Sub);
 
     Err(ParsingError::ExpectedOperation)
 }
