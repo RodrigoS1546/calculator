@@ -1,6 +1,7 @@
 use std::vec::IntoIter;
 
 use crate::tokenizer::Token;
+use rust_decimal_macros::dec;
 
 #[derive(Debug)]
 pub struct ParseTree {
@@ -130,11 +131,23 @@ macro_rules! parse_operator {
         while let Some(expr) = $expressions.next_expression()? {
             match expr {
                 Expression::Token(Token::$op | Token::$op2) => {
-                    let last = match $buffer.pop() {
-                        None | Some(Expression::Token(Token::Add | Token::Sub | Token::Mul | Token::Div)) => {
-                            return Err(ParsingError::ExpectedExpression);
+                    let operation = expr.unwrap_token();
+                    let last = if let Token::Sub = operation {
+                        match $buffer.pop() {
+                            Some(Expression::Token(Token::Add | Token::Sub | Token::Mul | Token::Div)) => {
+                                return Err(ParsingError::ExpectedExpression);
+                            }
+                            Some(expr) => expr,
+                            None => Expression::Token(Token::Literal(dec!(0))),
                         }
-                        Some(expr) => expr,
+                    }
+                    else {
+                        match $buffer.pop() {
+                            None | Some(Expression::Token(Token::Add | Token::Sub | Token::Mul | Token::Div)) => {
+                                return Err(ParsingError::ExpectedExpression);
+                            }
+                            Some(expr) => expr,
+                        }
                     };
             
                     let next = match $expressions.next_expression()? {
@@ -144,7 +157,7 @@ macro_rules! parse_operator {
                         Some(expr) => expr,
                     };
                     $buffer.push(Expression::Tree(ParseTree {
-                        token: expr.unwrap_token(),
+                        token: operation,
                         left: match last {
                             Expression::Token(lit) => Some(Box::new(ParseTree::new(lit))),
                             Expression::Tree(tree) => Some(Box::new(tree)), 
