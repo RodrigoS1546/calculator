@@ -3,11 +3,10 @@ mod parser;
 mod strings;
 mod tokenizer;
 
+use compute::compute_tree;
 use parser::parse;
 use strings::TrimInPlace;
 use tokenizer::tokenize;
-
-use crate::compute::compute_tree;
 
 fn main() {
     let mut input = String::new();
