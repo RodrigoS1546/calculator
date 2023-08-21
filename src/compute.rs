@@ -1,26 +1,77 @@
+use std::fmt::Display;
+
 use rust_decimal::prelude::*;
 use rust_decimal_macros::dec;
 
 use crate::parser::ParseTree;
 use crate::tokenizer::Token;
 
-fn compute(tree: Option<Box<ParseTree>>, ans: Option<Decimal>) -> Option<Decimal> {
-    match tree {
-        Some(tree) => match tree.token {
-            Token::Add => Some(compute(tree.left, ans)? + compute(tree.right, ans)?),
-            Token::Sub => Some(compute(tree.left, ans)? - compute(tree.right, ans)?),
-            Token::Mul => Some(compute(tree.left, ans)? * compute(tree.right, ans)?),
-            Token::Div => Some(compute(tree.left, ans)? / compute(tree.right, ans)?),
-            Token::Exp => Some(compute(tree.left, ans)?.powd(compute(tree.right, ans)?)),
-            Token::Literal(x) => Some(x),
-            Token::PI => Some(Decimal::PI),
-            Token::Ans => ans,
-            _ => None,
-        },
-        None => Some(dec!(0)),
+pub enum ComputeError {
+    Overflow,
+    DivByZero,
+    NoAns,
+    Unknown,
+}
+
+impl Display for ComputeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Overflow => write!(f, "Overflow"),
+            Self::DivByZero => write!(f, "Division by zero"),
+            Self::NoAns => write!(f, "No previous answer"),
+            Self::Unknown => write!(f, "Unkown"),
+        }
     }
 }
 
-pub fn compute_tree(tree: ParseTree, ans: Option<Decimal>) -> Option<Decimal> {
+macro_rules! compute_operation {
+    ($left:expr,$right:expr,$op:ident) => {
+        match $left.$op($right) {
+            Some(x) => Ok(x),
+            None => Err(ComputeError::Overflow),
+        }
+    };
+}
+
+fn compute(tree: Option<Box<ParseTree>>, ans: Option<Decimal>) -> Result<Decimal, ComputeError> {
+    match tree {
+        Some(tree) => match tree.token {
+            Token::Add => compute_operation!(
+                compute(tree.left, ans)?,
+                compute(tree.right, ans)?,
+                checked_add
+            ),
+            Token::Sub => compute_operation!(
+                compute(tree.left, ans)?,
+                compute(tree.right, ans)?,
+                checked_sub
+            ),
+            Token::Mul => compute_operation!(
+                compute(tree.left, ans)?,
+                compute(tree.right, ans)?,
+                checked_mul
+            ),
+            Token::Div => {
+                let right = compute(tree.right, ans)?;
+                if right.is_zero() {
+                    return Err(ComputeError::DivByZero);
+                }
+                compute_operation!(compute(tree.left, ans)?, right, checked_div)
+            }
+            Token::Exp => compute_operation!(
+                compute(tree.left, ans)?,
+                compute(tree.right, ans)?,
+                checked_powd
+            ),
+            Token::Literal(x) => Ok(x),
+            Token::PI => Ok(Decimal::PI),
+            Token::Ans => ans.ok_or(ComputeError::NoAns),
+            _ => Err(ComputeError::Unknown),
+        },
+        None => Ok(dec!(0)),
+    }
+}
+
+pub fn compute_tree(tree: ParseTree, ans: Option<Decimal>) -> Result<Decimal, ComputeError> {
     compute(Some(Box::new(tree)), ans)
 }

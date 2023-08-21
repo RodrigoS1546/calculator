@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use std::vec::IntoIter;
 
 use crate::tokenizer::Token;
@@ -26,6 +27,17 @@ pub enum ParsingError {
     ExpectedExpression,
     ExpectedOperation,
     Unknown,
+}
+
+impl Display for ParsingError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::InvalidParenthesis => write!(f, "Invalid Parenthesis"),
+            Self::ExpectedExpression => write!(f, "Expected Expression"),
+            Self::ExpectedOperation => write!(f, "Expected Operation"),
+            Self::Unknown => write!(f, "Unknown"),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -142,7 +154,7 @@ macro_rules! parse_operation {
             match expr {
                 Expression::Token(Token::$op | Token::$op2) => {
                     let operation = expr.unwrap_token();
-                    let last = if let Token::Sub = operation {
+                    let last = if let Token::Add | Token::Sub = operation {
                         match $buffer.pop() {
                             Some(Expression::Token(
                                 Token::Add | Token::Sub | Token::Mul | Token::Div,

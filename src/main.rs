@@ -29,7 +29,7 @@ fn main() {
         let tokens = match tokens {
             Some(tokens) => tokens,
             None => {
-                println!("Invalid tokens.");
+                println!("Invalid token.");
                 continue;
             }
         };
@@ -37,16 +37,20 @@ fn main() {
         let tree = match parse(tokens) {
             Ok(tree) => tree,
             Err(err) => {
-                println!("{:?}", err);
+                println!("Syntax error: {err}");
                 continue;
             }
         };
 
-        ans = compute_tree(tree, ans);
-
-        match ans {
-            Some(x) => println!("{x}"),
-            None => println!("Syntax error"),
-        }
+        ans = match compute_tree(tree, ans) {
+            Ok(x) => {
+                println!("{x}");
+                Some(x)
+            }
+            Err(err) => {
+                println!("Math error: {err}");
+                continue;
+            }
+        };
     }
 }
