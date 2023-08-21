@@ -95,7 +95,7 @@ impl NextExpression for IntoIter<Expression> {
     }
 }
 
-macro_rules! parse_operator {
+macro_rules! parse_operation {
     ($expressions:ident, $buffer:ident, $op:ident) => {
         while let Some(expr) = $expressions.next_expression()? {
             match expr {
@@ -207,17 +207,17 @@ fn parse_expressions(expressions: Vec<Expression>) -> Result<ParseTree, ParsingE
 
     let mut buffer = Vec::new();
 
-    parse_operator!(expressions, buffer, Exp);
+    parse_operation!(expressions, buffer, Exp);
 
     expressions = buffer.into_iter();
     buffer = Vec::new();
 
-    parse_operator!(expressions, buffer, Mul, Div);
+    parse_operation!(expressions, buffer, Mul, Div);
 
     expressions = buffer.into_iter();
     buffer = Vec::new();
 
-    parse_operator!(expressions, buffer, Add, Sub);
+    parse_operation!(expressions, buffer, Add, Sub);
 
     Err(ParsingError::ExpectedOperation)
 }
