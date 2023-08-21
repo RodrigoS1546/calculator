@@ -11,6 +11,7 @@ pub enum Token {
     CloseParenthesis,
     Literal(Decimal),
     Ans,
+    PI,
     #[default]
     Invalid,
 }
@@ -37,6 +38,8 @@ impl From<String> for Token {
             Err(_) => {
                 if value.eq_ignore_ascii_case("ans") {
                     Self::Ans
+                } else if value.eq_ignore_ascii_case("pi") {
+                    Self::PI
                 } else {
                     Self::Invalid
                 }

@@ -198,6 +198,7 @@ fn parse_expressions(expressions: Vec<Expression>) -> Result<ParseTree, ParsingE
         match expressions.into_iter().next().unwrap_or_default() {
             Expression::Token(Token::Literal(x)) => return Ok(ParseTree::new(Token::Literal(x))),
             Expression::Token(Token::Ans) => return Ok(ParseTree::new(Token::Ans)),
+            Expression::Token(Token::PI) => return Ok(ParseTree::new(Token::PI)),
             Expression::Tree(tree) => return Ok(tree),
             _ => return Err(ParsingError::Unknown),
         }

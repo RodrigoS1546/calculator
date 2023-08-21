@@ -11,12 +11,9 @@ fn compute(tree: Option<Box<ParseTree>>, ans: Option<Decimal>) -> Option<Decimal
             Token::Sub => Some(compute(tree.left, ans)? - compute(tree.right, ans)?),
             Token::Mul => Some(compute(tree.left, ans)? * compute(tree.right, ans)?),
             Token::Div => Some(compute(tree.left, ans)? / compute(tree.right, ans)?),
-            Token::Exp => Decimal::from_f64(
-                compute(tree.left, ans)?
-                    .to_f64()?
-                    .powf(compute(tree.right, ans)?.to_f64()?),
-            ),
+            Token::Exp => Some(compute(tree.left, ans)?.powd(compute(tree.right, ans)?)),
             Token::Literal(x) => Some(x),
+            Token::PI => Some(Decimal::PI),
             Token::Ans => ans,
             _ => None,
         },
