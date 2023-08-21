@@ -38,7 +38,7 @@ impl From<String> for Token {
             Err(_) => {
                 if value.eq_ignore_ascii_case("ans") {
                     Self::Ans
-                } else if value.eq_ignore_ascii_case("pi") {
+                } else if value.eq_ignore_ascii_case("pi") || value.eq_ignore_ascii_case("π") {
                     Self::PI
                 } else {
                     Self::Invalid
@@ -48,8 +48,17 @@ impl From<String> for Token {
     }
 }
 
+impl Token {
+    fn is_value(&self) -> bool {
+        match self {
+            Token::Literal(_) | Token::PI | Token::Ans => true,
+            _ => false,
+        }
+    }
+}
+
 pub fn tokenize(source: String) -> Option<Vec<Token>> {
-    let mut tokens = Vec::new();
+    let mut tokens: Vec<Token> = Vec::new();
     let mut iterator = source.chars().peekable();
 
     while let Some(c) = iterator.next() {
@@ -68,6 +77,11 @@ pub fn tokenize(source: String) -> Option<Vec<Token>> {
             let token = literal.into();
             if let Token::Invalid = token {
                 return None;
+            }
+            if let Some(prev) = tokens.last() {
+                if prev.is_value() {
+                    tokens.push(Token::Mul);
+                }
             }
             tokens.push(token);
         } else if c.is_digit(10) {
