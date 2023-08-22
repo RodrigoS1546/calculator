@@ -114,6 +114,13 @@ pub fn tokenize(source: String) -> Option<Vec<Token>> {
             if let Token::Invalid = token {
                 return None;
             }
+            if let Token::OpenParenthesis = token {
+                if let Some(prev) = tokens.last() {
+                    if prev.is_value() {
+                        tokens.push(Token::Mul);
+                    }
+                }
+            }
             tokens.push(token);
         }
     }
