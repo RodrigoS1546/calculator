@@ -93,6 +93,9 @@ impl NextExpression for IntoIter<Expression> {
                         _ => expression.push(next),
                     }
                 }
+                if close_count == open_count {
+                    return Err(ParsingError::InvalidParenthesis);
+                }
                 let sub_tree = parse_expressions(expression)?;
                 return Ok(Some(Expression::Tree(sub_tree)));
             }
