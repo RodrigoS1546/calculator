@@ -111,51 +111,10 @@ impl NextExpression for IntoIter<Expression> {
 }
 
 macro_rules! parse_operation {
-    ($expressions:ident, $buffer:ident, $op:ident) => {
+    ($expressions:ident, $buffer:ident, $op:ident $(, $other_op:ident)*) => {
         while let Some(expr) = $expressions.next_expression()? {
             match expr {
-                Expression::Token(Token::$op) => {
-                    let last = match $buffer.pop() {
-                        None
-                        | Some(Expression::Token(
-                            Token::Add | Token::Sub | Token::Mul | Token::Div,
-                        )) => {
-                            return Err(ParsingError::ExpectedExpression);
-                        }
-                        Some(expr) => expr,
-                    };
-
-                    let next = match $expressions.next_expression()? {
-                        None
-                        | Some(Expression::Token(
-                            Token::Add | Token::Sub | Token::Mul | Token::Div,
-                        )) => {
-                            return Err(ParsingError::ExpectedExpression);
-                        }
-                        Some(expr) => expr,
-                    };
-                    $buffer.push(Expression::Tree(ParseTree {
-                        token: Token::$op,
-                        left: match last {
-                            Expression::Token(lit) => Some(Box::new(ParseTree::new(lit))),
-                            Expression::Tree(tree) => Some(Box::new(tree)),
-                        },
-                        right: match next {
-                            Expression::Token(lit) => Some(Box::new(ParseTree::new(lit))),
-                            Expression::Tree(tree) => Some(Box::new(tree)),
-                        },
-                    }));
-                    $buffer.extend($expressions);
-                    return parse_expressions($buffer);
-                }
-                _ => $buffer.push(expr),
-            }
-        }
-    };
-    ($expressions:ident, $buffer:ident, $op:ident, $op2:ident) => {
-        while let Some(expr) = $expressions.next_expression()? {
-            match expr {
-                Expression::Token(Token::$op | Token::$op2) => {
+                Expression::Token(Token::$op $(| Token::$other_op)*) => {
                     let operation = expr.unwrap_token();
                     let last = if let Token::Add | Token::Sub = operation {
                         match $buffer.pop() {
@@ -199,8 +158,6 @@ macro_rules! parse_operation {
                             Expression::Tree(tree) => Some(Box::new(tree)),
                         },
                     }));
-                    $buffer.extend($expressions);
-                    return parse_expressions($buffer);
                 }
                 _ => $buffer.push(expr),
             }
@@ -209,16 +166,6 @@ macro_rules! parse_operation {
 }
 
 fn parse_expressions(expressions: Vec<Expression>) -> Result<ParseTree, ParsingError> {
-    if expressions.len() == 1 {
-        match expressions.into_iter().next().unwrap_or_default() {
-            Expression::Token(Token::Literal(x)) => return Ok(ParseTree::new(Token::Literal(x))),
-            Expression::Token(Token::Ans) => return Ok(ParseTree::new(Token::Ans)),
-            Expression::Token(Token::PI) => return Ok(ParseTree::new(Token::PI)),
-            Expression::Tree(tree) => return Ok(tree),
-            _ => return Err(ParsingError::Unknown),
-        }
-    }
-
     let mut expressions = expressions.into_iter();
 
     let mut buffer = Vec::new();
@@ -235,7 +182,18 @@ fn parse_expressions(expressions: Vec<Expression>) -> Result<ParseTree, ParsingE
 
     parse_operation!(expressions, buffer, Add, Sub);
 
-    Err(ParsingError::ExpectedOperation)
+    if buffer.len() == 1 {
+        match buffer.into_iter().next().unwrap_or_default() {
+            Expression::Token(Token::Literal(x)) => Ok(ParseTree::new(Token::Literal(x))),
+            Expression::Token(Token::Ans) => Ok(ParseTree::new(Token::Ans)),
+            Expression::Token(Token::PI) => Ok(ParseTree::new(Token::PI)),
+            Expression::Tree(tree) => Ok(tree),
+            _ => Err(ParsingError::Unknown),
+        }
+    }
+    else {
+        Err(ParsingError::ExpectedOperation)
+    }
 }
 
 pub fn parse(tokens: Vec<Token>) -> Result<ParseTree, ParsingError> {
