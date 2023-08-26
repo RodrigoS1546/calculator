@@ -12,6 +12,7 @@ pub enum Token {
     Tan,
     Ln,
     Log,
+    Sqrt,
     OpenParenthesis,
     CloseParenthesis,
     Literal(Decimal),
@@ -30,6 +31,7 @@ impl From<char> for Token {
             'x' | '*' => Self::Mul,
             ':' | '/' => Self::Div,
             '^' => Self::Pow,
+            '√' => Self::Sqrt,
             '(' => Self::OpenParenthesis,
             ')' => Self::CloseParenthesis,
             'e' => Self::E,
@@ -57,6 +59,8 @@ impl From<String> for Token {
                     Self::Ln
                 } else if value.eq_ignore_ascii_case("log") {
                     Self::Log
+                } else if value.eq_ignore_ascii_case("sqrt") {
+                    Self::Sqrt
                 } else {
                     Self::Invalid
                 }
@@ -131,7 +135,7 @@ pub fn tokenize(source: String) -> Option<Vec<Token>> {
             if let Token::Invalid = token {
                 return None;
             }
-            if let Token::OpenParenthesis = token {
+            if let Token::OpenParenthesis | Token::Sqrt = token {
                 if let Some(prev) = tokens.last() {
                     if prev.is_value() {
                         tokens.push(Token::Mul);

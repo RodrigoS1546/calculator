@@ -209,7 +209,7 @@ fn parse_expressions(expressions: Vec<Expression>) -> Result<ParseTree, ParsingE
 
     let mut buffer = Vec::new();
 
-    parse_function!(expressions, buffer, Sin, Cos, Tan, Ln, Log);
+    parse_function!(expressions, buffer, Sin, Cos, Tan, Ln, Log, Sqrt);
 
     expressions = buffer.into_iter();
     buffer = Vec::new();

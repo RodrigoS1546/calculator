@@ -77,6 +77,7 @@ fn compute(tree: Option<Box<ParseTree>>, ans: Option<Decimal>) -> Result<Decimal
             Token::Tan => compute_function!(compute(tree.left, ans)?, checked_tan),
             Token::Ln => compute_function!(compute(tree.left, ans)?, checked_ln),
             Token::Log => compute_function!(compute(tree.left, ans)?, checked_log10),
+            Token::Sqrt => compute_function!(compute(tree.left, ans)?, sqrt),
             Token::Literal(x) => Ok(x),
             Token::PI => Ok(Decimal::PI),
             Token::E => Ok(Decimal::E),
