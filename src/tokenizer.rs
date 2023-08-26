@@ -55,7 +55,7 @@ impl From<String> for Token {
 }
 
 impl Token {
-    fn is_value(&self) -> bool {
+    pub fn is_value(&self) -> bool {
         match self {
             Token::Literal(_) | Token::PI | Token::Ans => true,
             _ => false,

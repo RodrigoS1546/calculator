@@ -117,12 +117,15 @@ macro_rules! parse_function {
                 Expression::Token(Token::$fn $(| Token::$other_fn)*) => {
                     let function = expr.unwrap_token();
                     let next = match $expressions.next_expression()? {
-                        None
-                        | Some(Expression::Token(
-                            Token::Add | Token::Sub | Token::Mul | Token::Div | Token::Sin | Token::Cos,
-                        )) => {
-                            return Err(ParsingError::ExpectedExpression);
+                        Some(Expression::Token(token)) => {
+                            if token.is_value() {
+                                Expression::Token(token)
+                            }
+                            else {
+                                return Err(ParsingError::ExpectedExpression);
+                            }
                         }
+                        None => return Err(ParsingError::ExpectedExpression),
                         Some(expr) => expr,
                     };
                     $buffer.push(Expression::Tree(ParseTree {
@@ -148,10 +151,13 @@ macro_rules! parse_operation {
                     let operation = expr.unwrap_token();
                     let last = if let Token::Add | Token::Sub = operation {
                         match $buffer.pop() {
-                            Some(Expression::Token(
-                                Token::Add | Token::Sub | Token::Mul | Token::Div | Token::Sin | Token::Cos,
-                            )) => {
-                                return Err(ParsingError::ExpectedExpression);
+                            Some(Expression::Token(token)) => {
+                                if token.is_value() {
+                                    Expression::Token(token)
+                                }
+                                else {
+                                    return Err(ParsingError::ExpectedExpression);
+                                }
                             }
                             Some(expr) => expr,
                             None => Expression::Token(Token::Literal(dec!(0))),
@@ -169,12 +175,15 @@ macro_rules! parse_operation {
                     };
 
                     let next = match $expressions.next_expression()? {
-                        None
-                        | Some(Expression::Token(
-                            Token::Add | Token::Sub | Token::Mul | Token::Div | Token::Sin | Token::Cos,
-                        )) => {
-                            return Err(ParsingError::ExpectedExpression);
+                        Some(Expression::Token(token)) => {
+                            if token.is_value() {
+                                Expression::Token(token)
+                            }
+                            else {
+                                return Err(ParsingError::ExpectedExpression);
+                            }
                         }
+                        None => return Err(ParsingError::ExpectedExpression),
                         Some(expr) => expr,
                     };
                     $buffer.push(Expression::Tree(ParseTree {

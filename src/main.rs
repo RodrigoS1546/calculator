@@ -44,7 +44,7 @@ fn main() {
 
         ans = match compute_tree(tree, ans) {
             Ok(x) => {
-                println!("{x}");
+                println!("{}", x.round_dp_with_strategy(10, rust_decimal::RoundingStrategy::MidpointAwayFromZero));
                 Some(x)
             }
             Err(err) => {
