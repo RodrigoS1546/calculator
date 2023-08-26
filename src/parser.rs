@@ -110,6 +110,36 @@ impl NextExpression for IntoIter<Expression> {
     }
 }
 
+macro_rules! parse_function {
+    ($expressions:ident, $buffer:ident, $fn:ident $(, $other_fn:ident)*) => {
+        while let Some(expr) = $expressions.next_expression()? {
+            match expr {
+                Expression::Token(Token::$fn $(| Token::$other_fn)*) => {
+                    let function = expr.unwrap_token();
+                    let next = match $expressions.next_expression()? {
+                        None
+                        | Some(Expression::Token(
+                            Token::Add | Token::Sub | Token::Mul | Token::Div | Token::Sin | Token::Cos,
+                        )) => {
+                            return Err(ParsingError::ExpectedExpression);
+                        }
+                        Some(expr) => expr,
+                    };
+                    $buffer.push(Expression::Tree(ParseTree {
+                        token: function,
+                        left: match next {
+                            Expression::Token(lit) => Some(Box::new(ParseTree::new(lit))),
+                            Expression::Tree(tree) => Some(Box::new(tree)),
+                        },
+                        right: None,
+                    }));
+                },
+                _ => $buffer.push(expr),
+            }
+        }
+    };
+}
+
 macro_rules! parse_operation {
     ($expressions:ident, $buffer:ident, $op:ident $(, $other_op:ident)*) => {
         while let Some(expr) = $expressions.next_expression()? {
@@ -119,7 +149,7 @@ macro_rules! parse_operation {
                     let last = if let Token::Add | Token::Sub = operation {
                         match $buffer.pop() {
                             Some(Expression::Token(
-                                Token::Add | Token::Sub | Token::Mul | Token::Div,
+                                Token::Add | Token::Sub | Token::Mul | Token::Div | Token::Sin | Token::Cos,
                             )) => {
                                 return Err(ParsingError::ExpectedExpression);
                             }
@@ -130,7 +160,7 @@ macro_rules! parse_operation {
                         match $buffer.pop() {
                             None
                             | Some(Expression::Token(
-                                Token::Add | Token::Sub | Token::Mul | Token::Div,
+                                Token::Add | Token::Sub | Token::Mul | Token::Div | Token::Sin | Token::Cos,
                             )) => {
                                 return Err(ParsingError::ExpectedExpression);
                             }
@@ -141,7 +171,7 @@ macro_rules! parse_operation {
                     let next = match $expressions.next_expression()? {
                         None
                         | Some(Expression::Token(
-                            Token::Add | Token::Sub | Token::Mul | Token::Div,
+                            Token::Add | Token::Sub | Token::Mul | Token::Div | Token::Sin | Token::Cos,
                         )) => {
                             return Err(ParsingError::ExpectedExpression);
                         }
@@ -169,6 +199,11 @@ fn parse_expressions(expressions: Vec<Expression>) -> Result<ParseTree, ParsingE
     let mut expressions = expressions.into_iter();
 
     let mut buffer = Vec::new();
+
+    parse_function!(expressions, buffer, Sin, Cos);
+
+    expressions = buffer.into_iter();
+    buffer = Vec::new();
 
     parse_operation!(expressions, buffer, Exp);
 

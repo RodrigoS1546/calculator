@@ -7,6 +7,8 @@ pub enum Token {
     Mul,
     Div,
     Exp,
+    Sin,
+    Cos,
     OpenParenthesis,
     CloseParenthesis,
     Literal(Decimal),
@@ -40,6 +42,10 @@ impl From<String> for Token {
                     Self::Ans
                 } else if value.eq_ignore_ascii_case("pi") || value.eq_ignore_ascii_case("π") {
                     Self::PI
+                } else if value.eq_ignore_ascii_case("sin") {
+                    Self::Sin
+                } else if value.eq_ignore_ascii_case("cos") {
+                    Self::Cos
                 } else {
                     Self::Invalid
                 }

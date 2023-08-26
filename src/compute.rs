@@ -24,6 +24,15 @@ impl Display for ComputeError {
     }
 }
 
+macro_rules! compute_function {
+    ($value:expr,$op:ident) => {
+        match $value.$op() {
+            Some(x) => Ok(x),
+            None => Err(ComputeError::Overflow),
+        }
+    };
+}
+
 macro_rules! compute_operation {
     ($left:expr,$right:expr,$op:ident) => {
         match $left.$op($right) {
@@ -62,6 +71,14 @@ fn compute(tree: Option<Box<ParseTree>>, ans: Option<Decimal>) -> Result<Decimal
                 compute(tree.left, ans)?,
                 compute(tree.right, ans)?,
                 checked_powd
+            ),
+            Token::Sin => compute_function!(
+                compute(tree.left, ans)?,
+                checked_sin
+            ),
+            Token::Cos => compute_function!(
+                compute(tree.left, ans)?,
+                checked_cos
             ),
             Token::Literal(x) => Ok(x),
             Token::PI => Ok(Decimal::PI),
