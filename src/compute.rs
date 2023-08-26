@@ -80,6 +80,18 @@ fn compute(tree: Option<Box<ParseTree>>, ans: Option<Decimal>) -> Result<Decimal
                 compute(tree.left, ans)?,
                 checked_cos
             ),
+            Token::Tan => compute_function!(
+                compute(tree.left, ans)?,
+                checked_tan
+            ),
+            Token::Ln => compute_function!(
+                compute(tree.left, ans)?,
+                checked_ln
+            ),
+            Token::Log => compute_function!(
+                compute(tree.left, ans)?,
+                checked_log10
+            ),
             Token::Literal(x) => Ok(x),
             Token::PI => Ok(Decimal::PI),
             Token::Ans => ans.ok_or(ComputeError::NoAns),

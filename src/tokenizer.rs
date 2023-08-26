@@ -9,6 +9,9 @@ pub enum Token {
     Pow,
     Sin,
     Cos,
+    Tan,
+    Ln,
+    Log,
     OpenParenthesis,
     CloseParenthesis,
     Literal(Decimal),
@@ -46,6 +49,12 @@ impl From<String> for Token {
                     Self::Sin
                 } else if value.eq_ignore_ascii_case("cos") {
                     Self::Cos
+                } else if value.eq_ignore_ascii_case("tan") {
+                    Self::Tan
+                } else if value.eq_ignore_ascii_case("ln") {
+                    Self::Ln
+                } else if value.eq_ignore_ascii_case("log") {
+                    Self::Log
                 } else {
                     Self::Invalid
                 }
