@@ -228,14 +228,16 @@ fn parse_expressions(expressions: Vec<Expression>) -> Result<ParseTree, ParsingE
 
     if buffer.len() == 1 {
         match buffer.into_iter().next().unwrap_or_default() {
-            Expression::Token(Token::Literal(x)) => Ok(ParseTree::new(Token::Literal(x))),
-            Expression::Token(Token::Ans) => Ok(ParseTree::new(Token::Ans)),
-            Expression::Token(Token::PI) => Ok(ParseTree::new(Token::PI)),
+            Expression::Token(token) => {
+                if token.is_value() {
+                    Ok(ParseTree::new(token))
+                } else {
+                    Err(ParsingError::Unknown)
+                }
+            }
             Expression::Tree(tree) => Ok(tree),
-            _ => Err(ParsingError::Unknown),
         }
-    }
-    else {
+    } else {
         Err(ParsingError::ExpectedOperation)
     }
 }

@@ -17,6 +17,7 @@ pub enum Token {
     Literal(Decimal),
     Ans,
     PI,
+    E,
     #[default]
     Invalid,
 }
@@ -31,6 +32,7 @@ impl From<char> for Token {
             '^' => Self::Pow,
             '(' => Self::OpenParenthesis,
             ')' => Self::CloseParenthesis,
+            'e' => Self::E,
             _ => Self::Invalid,
         }
     }
@@ -66,7 +68,7 @@ impl From<String> for Token {
 impl Token {
     pub fn is_value(&self) -> bool {
         match self {
-            Token::Literal(_) | Token::PI | Token::Ans => true,
+            Token::Literal(_) | Token::PI | Token::E | Token::Ans => true,
             _ => false,
         }
     }
@@ -79,7 +81,7 @@ pub fn tokenize(source: String) -> Option<Vec<Token>> {
     while let Some(c) = iterator.next() {
         if c.is_whitespace() {
             continue;
-        } else if c.is_alphabetic() && c != 'x' {
+        } else if c.is_alphabetic() && c != 'x' && c != 'e' {
             let mut literal = String::with_capacity(3);
             literal.push(c);
             while let Some(&d) = iterator.peek() {
