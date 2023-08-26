@@ -214,7 +214,7 @@ fn parse_expressions(expressions: Vec<Expression>) -> Result<ParseTree, ParsingE
     expressions = buffer.into_iter();
     buffer = Vec::new();
 
-    parse_operation!(expressions, buffer, Exp);
+    parse_operation!(expressions, buffer, Pow);
 
     expressions = buffer.into_iter();
     buffer = Vec::new();

@@ -67,7 +67,7 @@ fn compute(tree: Option<Box<ParseTree>>, ans: Option<Decimal>) -> Result<Decimal
                 }
                 compute_operation!(compute(tree.left, ans)?, right, checked_div)
             }
-            Token::Exp => compute_operation!(
+            Token::Pow => compute_operation!(
                 compute(tree.left, ans)?,
                 compute(tree.right, ans)?,
                 checked_powd
