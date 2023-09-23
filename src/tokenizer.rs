@@ -172,8 +172,7 @@ pub fn tokenize(source: String) -> Option<Vec<Token>> {
                             last_expr.push(token);
                         }
                         last_expr.reverse();
-                    }
-                    else {
+                    } else {
                         last_expr.push(token);
                     }
                 }
