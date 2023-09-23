@@ -24,6 +24,8 @@ impl ParseTree {
 #[derive(Debug)]
 pub enum ParsingError {
     InvalidParenthesis,
+    InvalidComma,
+    InvalidArgs,
     ExpectedExpression,
     ExpectedOperation,
     BlankInput,
@@ -34,6 +36,8 @@ impl Display for ParsingError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::InvalidParenthesis => write!(f, "Invalid Parenthesis"),
+            Self::InvalidComma => write!(f, "Invalid Comma"),
+            Self::InvalidArgs => write!(f, "Invalid Arguments to function"),
             Self::ExpectedExpression => write!(f, "Expected Expression"),
             Self::ExpectedOperation => write!(f, "Expected Operation"),
             Self::BlankInput => write!(f, "Missing Input"),
@@ -64,42 +68,75 @@ impl Default for Expression {
 }
 
 trait NextExpression {
-    fn next_expression(self: &mut Self) -> Result<Option<Expression>, ParsingError>;
+    fn next_expression(
+        self: &mut Self,
+    ) -> Result<(Option<Expression>, Option<Expression>), ParsingError>;
 }
 
 impl NextExpression for IntoIter<Expression> {
-    fn next_expression(&mut self) -> Result<Option<Expression>, ParsingError> {
+    fn next_expression(
+        &mut self,
+    ) -> Result<(Option<Expression>, Option<Expression>), ParsingError> {
         let expr = match self.next() {
             Some(expr) => expr,
-            None => return Ok(None),
+            None => return Ok((None, None)),
         };
 
         match expr {
             Expression::Token(Token::OpenParenthesis) => {
                 let mut expression = Vec::new();
+                let mut expression2: Option<Vec<Expression>> = None;
+                let mut first = true;
                 let mut open_count = 0usize;
                 let mut close_count = 0usize;
                 while let Some(next) = self.next() {
                     match next {
                         Expression::Token(Token::OpenParenthesis) => {
                             open_count += 1;
-                            expression.push(next);
+                            if first {
+                                &mut expression
+                            } else {
+                                expression2.as_mut().unwrap()
+                            }
+                            .push(next);
+                        }
+                        Expression::Token(Token::Comma) => {
+                            if !first {
+                                return Err(ParsingError::InvalidComma);
+                            }
+                            first = false;
+                            expression2 = Some(Vec::new());
                         }
                         Expression::Token(Token::CloseParenthesis) => {
                             close_count += 1;
                             if close_count > open_count {
                                 break;
                             }
-                            expression.push(next);
+                            if first {
+                                &mut expression
+                            } else {
+                                expression2.as_mut().unwrap()
+                            }
+                            .push(next);
                         }
-                        _ => expression.push(next),
+                        _ => if first {
+                            &mut expression
+                        } else {
+                            expression2.as_mut().unwrap()
+                        }
+                        .push(next),
                     }
                 }
                 if close_count == open_count {
                     return Err(ParsingError::InvalidParenthesis);
                 }
-                let sub_tree = parse_expressions(expression)?;
-                return Ok(Some(Expression::Tree(sub_tree)));
+                let sub_tree = Some(Expression::Tree(parse_expressions(expression)?));
+                let sub_tree2 = if let Some(expression2) = expression2 {
+                    Some(Expression::Tree(parse_expressions(expression2)?))
+                } else {
+                    None
+                };
+                return Ok((sub_tree, sub_tree2));
             }
             Expression::Token(Token::CloseParenthesis) => {
                 return Err(ParsingError::InvalidParenthesis)
@@ -107,36 +144,47 @@ impl NextExpression for IntoIter<Expression> {
             Expression::Token(Token::Invalid) => {
                 panic!("An invalid token should never get to parsing stage.")
             }
-            _ => return Ok(Some(expr)),
+            _ => return Ok((Some(expr), None)),
         }
     }
 }
 
 macro_rules! parse_function {
     ($expressions:ident, $buffer:ident, $fn:ident $(, $other_fn:ident)*) => {
-        while let Some(expr) = $expressions.next_expression()? {
+        while let (Some(expr), _) = $expressions.next_expression()? {
             match expr {
                 Expression::Token(Token::$fn $(| Token::$other_fn)*) => {
                     let function = expr.unwrap_token();
                     let next = match $expressions.next_expression()? {
-                        Some(Expression::Token(token)) => {
+                        (Some(Expression::Token(token)), x) => {
                             if token.is_value() {
-                                Expression::Token(token)
+                                (Expression::Token(token), x)
                             }
                             else {
                                 return Err(ParsingError::ExpectedExpression);
                             }
                         }
-                        None => return Err(ParsingError::ExpectedExpression),
-                        Some(expr) => expr,
+                        (None, _) => return Err(ParsingError::ExpectedExpression),
+                        (Some(expr), x) => (expr, x),
                     };
+                    if let Some(_) = next.1 {
+                        match function {
+                            Token::Log => (),
+                            _ => return Err(ParsingError::InvalidArgs)
+                        }
+                    }
                     $buffer.push(Expression::Tree(ParseTree {
                         token: function,
-                        left: match next {
+                        left: match next.0 {
                             Expression::Token(lit) => Some(Box::new(ParseTree::new(lit))),
                             Expression::Tree(tree) => Some(Box::new(tree)),
                         },
-                        right: None,
+                        right: next.1.map(|x| {
+                            match x {
+                                Expression::Token(lit) => Box::new(ParseTree::new(lit)),
+                                Expression::Tree(tree) => Box::new(tree),
+                            }
+                        }),
                     }));
                 },
                 _ => $buffer.push(expr),
@@ -147,7 +195,7 @@ macro_rules! parse_function {
 
 macro_rules! parse_operation {
     ($expressions:ident, $buffer:ident, $op:ident $(, $other_op:ident)*) => {
-        while let Some(expr) = $expressions.next_expression()? {
+        while let (Some(expr), _) = $expressions.next_expression()? {
             match expr {
                 Expression::Token(Token::$op $(| Token::$other_op)*) => {
                     let operation = expr.unwrap_token();
@@ -177,7 +225,7 @@ macro_rules! parse_operation {
                     };
 
                     let next = match $expressions.next_expression()? {
-                        Some(Expression::Token(token)) => {
+                        (Some(Expression::Token(token)), _) => {
                             if token.is_value() {
                                 Expression::Token(token)
                             }
@@ -185,8 +233,8 @@ macro_rules! parse_operation {
                                 return Err(ParsingError::ExpectedExpression);
                             }
                         }
-                        None => return Err(ParsingError::ExpectedExpression),
-                        Some(expr) => expr,
+                        (None, _) => return Err(ParsingError::ExpectedExpression),
+                        (Some(expr), _) => expr,
                     };
                     $buffer.push(Expression::Tree(ParseTree {
                         token: operation,

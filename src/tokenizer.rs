@@ -15,6 +15,7 @@ pub enum Token {
     Sqrt,
     OpenParenthesis,
     CloseParenthesis,
+    Comma,
     Literal(Decimal),
     Ans,
     PI,
@@ -34,6 +35,7 @@ impl From<char> for Token {
             '√' => Self::Sqrt,
             '(' => Self::OpenParenthesis,
             ')' => Self::CloseParenthesis,
+            ',' => Self::Comma,
             'e' => Self::E,
             _ => Self::Invalid,
         }
