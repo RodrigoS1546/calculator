@@ -26,6 +26,7 @@ pub enum ParsingError {
     InvalidParenthesis,
     ExpectedExpression,
     ExpectedOperation,
+    BlankInput,
     Unknown,
 }
 
@@ -35,6 +36,7 @@ impl Display for ParsingError {
             Self::InvalidParenthesis => write!(f, "Invalid Parenthesis"),
             Self::ExpectedExpression => write!(f, "Expected Expression"),
             Self::ExpectedOperation => write!(f, "Expected Operation"),
+            Self::BlankInput => write!(f, "Missing Input"),
             Self::Unknown => write!(f, "Unknown"),
         }
     }
@@ -237,6 +239,8 @@ fn parse_expressions(expressions: Vec<Expression>) -> Result<ParseTree, ParsingE
             }
             Expression::Tree(tree) => Ok(tree),
         }
+    } else if buffer.len() == 0 {
+        Err(ParsingError::BlankInput)
     } else {
         Err(ParsingError::ExpectedOperation)
     }
