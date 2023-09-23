@@ -13,6 +13,7 @@ pub enum Token {
     Ln,
     Log,
     Sqrt,
+    Factorial,
     OpenParenthesis,
     CloseParenthesis,
     Comma,
@@ -33,6 +34,7 @@ impl From<char> for Token {
             ':' | '/' => Self::Div,
             '^' => Self::Pow,
             '√' => Self::Sqrt,
+            '!' => Self::Factorial,
             '(' => Self::OpenParenthesis,
             ')' => Self::CloseParenthesis,
             ',' => Self::Comma,
@@ -144,7 +146,42 @@ pub fn tokenize(source: String) -> Option<Vec<Token>> {
                     }
                 }
             }
-            tokens.push(token);
+
+            if let Token::Factorial = token {
+                let mut last_expr = Vec::new();
+                if let Some(token) = tokens.pop() {
+                    if let Token::CloseParenthesis = token {
+                        last_expr.push(token);
+                        let mut open_count = 0usize;
+                        let mut close_count = 0usize;
+                        loop {
+                            let token = match tokens.pop() {
+                                Some(token) => token,
+                                None => break,
+                            };
+                            if let Token::OpenParenthesis = token {
+                                open_count += 1;
+                                if open_count > close_count {
+                                    last_expr.push(token);
+                                    break;
+                                }
+                            }
+                            if let Token::CloseParenthesis = token {
+                                close_count += 1;
+                            }
+                            last_expr.push(token);
+                        }
+                        last_expr.reverse();
+                    }
+                    else {
+                        last_expr.push(token);
+                    }
+                }
+                tokens.push(token);
+                tokens.extend(last_expr);
+            } else {
+                tokens.push(token);
+            }
         }
     }
 

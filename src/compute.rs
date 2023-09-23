@@ -11,6 +11,8 @@ pub enum ComputeError {
     DivByZero,
     LogBaseZero,
     NotReal,
+    MustBeInt,
+    MustBeNonNegative,
     NoAns,
     Unknown,
 }
@@ -22,10 +24,27 @@ impl Display for ComputeError {
             Self::DivByZero => write!(f, "Division by zero"),
             Self::LogBaseZero => write!(f, "Log base zero"),
             Self::NotReal => write!(f, "Not real"),
+            Self::MustBeInt => write!(f, "Input to function must be an integer"),
+            Self::MustBeNonNegative => write!(f, "Input to function must not be negative"),
             Self::NoAns => write!(f, "No previous answer"),
             Self::Unknown => write!(f, "Unkown"),
         }
     }
+}
+
+fn factorial(mut val: Decimal) -> Result<Decimal, ComputeError> {
+    if !val.is_integer() {
+        return Err(ComputeError::MustBeInt);
+    }
+    if val.is_sign_negative() {
+        return Err(ComputeError::MustBeNonNegative);
+    }
+    let mut result = Decimal::ONE;
+    while val > Decimal::ONE {
+        result = result.checked_mul(val).ok_or(ComputeError::Overflow)?;
+        val -= Decimal::ONE;
+    }
+    Ok(result)
 }
 
 fn compute(tree: Option<Box<ParseTree>>, ans: Option<Decimal>) -> Result<Decimal, ComputeError> {
@@ -87,6 +106,7 @@ fn compute(tree: Option<Box<ParseTree>>, ans: Option<Decimal>) -> Result<Decimal
                 }
             }
             Token::Sqrt => compute(tree.left, ans)?.sqrt().ok_or(ComputeError::NotReal),
+            Token::Factorial => factorial(compute(tree.left, ans)?),
             Token::Literal(x) => Ok(x),
             Token::PI => Ok(Decimal::PI),
             Token::E => Ok(Decimal::E),
