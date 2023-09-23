@@ -5,6 +5,7 @@ mod tokenizer;
 
 use compute::compute_tree;
 use parser::parse;
+use rust_decimal::RoundingStrategy;
 use strings::TrimInPlace;
 use tokenizer::tokenize;
 
@@ -46,10 +47,7 @@ fn main() {
             Ok(x) => {
                 println!(
                     "{}",
-                    x.round_dp_with_strategy(
-                        10,
-                        rust_decimal::RoundingStrategy::MidpointAwayFromZero
-                    )
+                    x.round_dp_with_strategy(10, RoundingStrategy::MidpointAwayFromZero)
                 );
                 Some(x)
             }
