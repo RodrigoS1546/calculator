@@ -1,12 +1,10 @@
 mod compute;
 mod parser;
-mod strings;
 mod tokenizer;
 
 use compute::compute_tree;
 use parser::parse;
 use rust_decimal::RoundingStrategy;
-use strings::TrimInPlace;
 use tokenizer::tokenize;
 
 fn main() {
@@ -21,8 +19,6 @@ fn main() {
                 std::process::exit(1);
             }
         };
-
-        input.trim_in_place();
 
         let tokens = tokenize(input.clone());
         input.clear();
