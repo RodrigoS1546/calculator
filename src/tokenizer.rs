@@ -165,7 +165,7 @@ pub fn tokenize(source: String) -> Option<Vec<Token>> {
                                     break;
                                 }
                             }
-                            if let Token::CloseParenthesis = token {
+                            else if let Token::CloseParenthesis = token {
                                 close_count += 1;
                             }
                             last_expr.push(token);
