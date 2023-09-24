@@ -146,8 +146,7 @@ pub fn tokenize(source: String) -> Option<Vec<Token>> {
                     }
                 }
             }
-
-            if let Token::Factorial = token {
+            else if let Token::Factorial = token {
                 let mut last_expr = Vec::new();
                 if let Some(token) = tokens.pop() {
                     if let Token::CloseParenthesis = token {
