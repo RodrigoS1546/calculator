@@ -1,6 +1,6 @@
 use rust_decimal::prelude::*;
 
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum Token {
     Add,
     Sub,
@@ -21,52 +21,54 @@ pub enum Token {
     Ans,
     PI,
     E,
-    #[default]
-    Invalid,
 }
 
-impl From<char> for Token {
-    fn from(value: char) -> Self {
+impl TryFrom<char> for Token {
+    type Error = ();
+
+    fn try_from(value: char) -> Result<Self, ()> {
         match value {
-            '+' => Self::Add,
-            '-' => Self::Sub,
-            'x' | '*' => Self::Mul,
-            ':' | '/' => Self::Div,
-            '^' => Self::Pow,
-            '√' => Self::Sqrt,
-            '!' => Self::Factorial,
-            '(' => Self::OpenParenthesis,
-            ')' => Self::CloseParenthesis,
-            ',' => Self::Comma,
-            'e' => Self::E,
-            _ => Self::Invalid,
+            '+' => Ok(Self::Add),
+            '-' => Ok(Self::Sub),
+            'x' | '*' => Ok(Self::Mul),
+            ':' | '/' => Ok(Self::Div),
+            '^' => Ok(Self::Pow),
+            '√' => Ok(Self::Sqrt),
+            '!' => Ok(Self::Factorial),
+            '(' => Ok(Self::OpenParenthesis),
+            ')' => Ok(Self::CloseParenthesis),
+            ',' => Ok(Self::Comma),
+            'e' => Ok(Self::E),
+            _ => Err(())
         }
     }
 }
 
-impl From<String> for Token {
-    fn from(value: String) -> Self {
+impl TryFrom<String> for Token {
+    type Error = ();
+
+    fn try_from(value: String) -> Result<Self, ()> {
         match value.parse::<Decimal>() {
-            Ok(x) => Self::Literal(x),
+            Ok(x) => Ok(Self::Literal(x)),
             Err(_) => {
                 if value.eq_ignore_ascii_case("ans") {
-                    Self::Ans
+                    Ok(Self::Ans)
                 } else if value.eq_ignore_ascii_case("pi") || value.eq_ignore_ascii_case("π") {
-                    Self::PI
+                    Ok(Self::PI)
                 } else if value.eq_ignore_ascii_case("sin") {
-                    Self::Sin
+                    Ok(Self::Sin)
                 } else if value.eq_ignore_ascii_case("cos") {
-                    Self::Cos
+                    Ok(Self::Cos)
                 } else if value.eq_ignore_ascii_case("tan") {
-                    Self::Tan
+                    Ok(Self::Tan)
                 } else if value.eq_ignore_ascii_case("ln") {
-                    Self::Ln
+                    Ok(Self::Ln)
                 } else if value.eq_ignore_ascii_case("log") {
-                    Self::Log
+                    Ok(Self::Log)
                 } else if value.eq_ignore_ascii_case("sqrt") {
-                    Self::Sqrt
+                    Ok(Self::Sqrt)
                 } else {
-                    Self::Invalid
+                    Err(())
                 }
             }
         }
@@ -99,10 +101,7 @@ pub fn tokenize(source: String) -> Option<Vec<Token>> {
                     break;
                 }
             }
-            let token = literal.into();
-            if let Token::Invalid = token {
-                return None;
-            }
+            let token = literal.try_into().ok()?;
             if let Some(prev) = tokens.last() {
                 if prev.is_value() {
                     tokens.push(Token::Mul);
@@ -129,16 +128,10 @@ pub fn tokenize(source: String) -> Option<Vec<Token>> {
                 }
                 literal.push(iterator.next().unwrap_or_default());
             }
-            let token = literal.into();
-            if let Token::Invalid = token {
-                return None;
-            }
+            let token = literal.try_into().ok()?;
             tokens.push(token);
         } else {
-            let token = c.into();
-            if let Token::Invalid = token {
-                return None;
-            }
+            let token = c.try_into().ok()?;
             if let Token::OpenParenthesis | Token::Sqrt = token {
                 if let Some(prev) = tokens.last() {
                     if prev.is_value() {

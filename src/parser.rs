@@ -61,12 +61,6 @@ impl Expression {
     }
 }
 
-impl Default for Expression {
-    fn default() -> Self {
-        Self::Token(Token::default())
-    }
-}
-
 trait NextExpression {
     fn next_expression(
         self: &mut Self,
@@ -140,9 +134,6 @@ impl NextExpression for IntoIter<Expression> {
             }
             Expression::Token(Token::CloseParenthesis) => {
                 return Err(ParsingError::InvalidParenthesis)
-            }
-            Expression::Token(Token::Invalid) => {
-                panic!("An invalid token should never get to parsing stage.")
             }
             _ => return Ok((Some(expr), None)),
         }
@@ -277,7 +268,7 @@ fn parse_expressions(expressions: Vec<Expression>) -> Result<ParseTree, ParsingE
     parse_operation!(expressions, buffer, Add, Sub);
 
     if buffer.len() == 1 {
-        match buffer.into_iter().next().unwrap_or_default() {
+        match unsafe { buffer.into_iter().next().unwrap_unchecked() } {
             Expression::Token(token) => {
                 if token.is_value() {
                     Ok(ParseTree::new(token))
