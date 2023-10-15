@@ -64,104 +64,89 @@ macro_rules! next_expression {
     ($iter:ident) => {
         match $iter.next() {
             Some(Expression::Token(Token::OpenParenthesis)) => {
-                let mut expression = Vec::new();
-                let mut expression2: Option<Vec<Expression>> = None;
-                let mut first = true;
+                let mut expressions: Vec<Vec<Expression>> = vec![ Vec::new() ];
+                let mut curr: usize = 0;
                 let mut open_count = 1usize;
                 let mut close_count = 0usize;
                 while let Some(next) = $iter.next() {
                     match next {
                         Expression::Token(Token::OpenParenthesis) => {
                             open_count += 1;
-                            if first {
-                                &mut expression
-                            } else {
-                                expression2.as_mut().unwrap()
-                            }
-                            .push(next);
+                            expressions[curr].push(next);
                         }
                         Expression::Token(Token::Comma) => {
-                            if !first {
-                                return Err(ParsingError::InvalidComma);
-                            }
-                            first = false;
-                            expression2 = Some(Vec::new());
+                            curr += 1;
+                            expressions.push(Vec::new());
                         }
                         Expression::Token(Token::CloseParenthesis) => {
                             close_count += 1;
                             if close_count == open_count {
                                 break;
                             }
-                            if first {
-                                &mut expression
-                            } else {
-                                expression2.as_mut().unwrap()
-                            }
-                            .push(next);
+                            expressions[curr].push(next);
                         }
-                        _ => if first {
-                            &mut expression
-                        } else {
-                            expression2.as_mut().unwrap()
-                        }
-                        .push(next),
+                        _ => expressions[curr].push(next),
                     }
                 }
                 if close_count != open_count {
                     return Err(ParsingError::InvalidParenthesis);
                 }
-                let sub_tree = Some(Expression::Tree(parse_expressions(expression)?));
-                let sub_tree2 = if let Some(expression2) = expression2 {
-                    Some(Expression::Tree(parse_expressions(expression2)?))
-                } else {
-                    None
-                };
-                (sub_tree, sub_tree2)
+                expressions.into_iter().map(|expression| parse_expressions(expression).map(|tree| Expression::Tree(tree))).collect::<Result<Vec<_>, _>>()?
             }
             Some(Expression::Token(Token::CloseParenthesis)) => {
                 return Err(ParsingError::InvalidParenthesis);
             }
-            Some(expr) => (Some(expr), None),
-            None => (None, None),
+            Some(expr) => vec![expr],
+            None => Vec::new(),
         }
     };
 }
 
 macro_rules! parse_function {
     ($expressions:ident, $buffer:ident, $fn:ident $(, $other_fn:ident)*) => {
-        while let (Some(expr), _) = next_expression!($expressions) {
+        loop {
+            let expr = next_expression!($expressions);
+            if expr.len() == 0 {
+                break;
+            } else if expr.len() > 1 {
+                return Err(ParsingError::InvalidComma);
+            }
+            let expr = unsafe { expr.into_iter().next().unwrap_unchecked() };
             match expr {
                 Expression::Token(Token::$fn $(| Token::$other_fn)*) => {
                     let function = expr.unwrap_token_unchecked();
-                    let next = match next_expression!($expressions) {
-                        (Some(Expression::Token(token)), x) => {
+                    let mut exprs = next_expression!($expressions).into_iter();
+                    let arg1 = match exprs.next() {
+                        Some(Expression::Token(token)) => {
                             if token.is_value() {
-                                (Expression::Token(token), x)
+                                Expression::Token(token)
                             }
                             else {
                                 return Err(ParsingError::ExpectedExpression);
                             }
-                        }
-                        (None, _) => return Err(ParsingError::ExpectedExpression),
-                        (Some(expr), x) => (expr, x),
+                        },
+                        Some(expr) => expr,
+                        None => return Err(ParsingError::ExpectedExpression)
                     };
-                    if let Some(_) = next.1 {
-                        match function {
-                            Token::Log => (),
-                            _ => return Err(ParsingError::InvalidArgs)
+                    let mut arg2: Option<Expression> = None;
+                    if let Token::Log = function {
+                        arg2 = exprs.next();
+                        if exprs.next().is_some() {
+                            return Err(ParsingError::InvalidArgs);
                         }
+                    }
+                    else if exprs.len() > 1 {
+                        return Err(ParsingError::InvalidArgs);
                     }
                     $buffer.push(Expression::Tree(ParseTree {
                         token: function,
-                        left: match next.0 {
+                        left: match arg1 {
                             Expression::Token(lit) => Some(Box::new(ParseTree::new(lit))),
                             Expression::Tree(tree) => Some(Box::new(tree)),
                         },
-                        right: next.1.map(|x| {
-                            match x {
-                                Expression::Token(lit) => Box::new(ParseTree::new(lit)),
-                                Expression::Tree(tree) => Box::new(tree),
-                            }
+                        right: arg2.map(|expr| match expr {
+                            Expression::Token(lit) => Box::new(ParseTree::new(lit)),
+                            Expression::Tree(tree) => Box::new(tree),
                         }),
                     }));
                 },
@@ -173,37 +158,19 @@ macro_rules! parse_function {
 
 macro_rules! parse_operation {
     ($expressions:ident, $buffer:ident, $op:ident $(, $other_op:ident)*) => {
-        while let (Some(expr), _) = next_expression!($expressions) {
+        loop {
+            let expr = next_expression!($expressions);
+            if expr.len() == 0 {
+                break;
+            } else if expr.len() != 1 {
+                return Err(ParsingError::InvalidComma);
+            }
+            let expr = unsafe { expr.into_iter().next().unwrap_unchecked() };
             match expr {
                 Expression::Token(Token::$op $(| Token::$other_op)*) => {
                     let operation = expr.unwrap_token_unchecked();
-                    let last = if let Token::Add | Token::Sub = operation {
-                        match $buffer.pop() {
-                            Some(Expression::Token(token)) => {
-                                if token.is_value() {
-                                    Expression::Token(token)
-                                }
-                                else {
-                                    return Err(ParsingError::ExpectedExpression);
-                                }
-                            }
-                            Some(expr) => expr,
-                            None => Expression::Token(Token::Literal(dec!(0))),
-                        }
-                    } else {
-                        match $buffer.pop() {
-                            None
-                            | Some(Expression::Token(
-                                Token::Add | Token::Sub | Token::Mul | Token::Div | Token::Sin | Token::Cos,
-                            )) => {
-                                return Err(ParsingError::ExpectedExpression);
-                            }
-                            Some(expr) => expr,
-                        }
-                    };
-
-                    let next = match next_expression!($expressions) {
-                        (Some(Expression::Token(token)), _) => {
+                    let last = match $buffer.pop() {
+                        Some(Expression::Token(token)) => {
                             if token.is_value() {
                                 Expression::Token(token)
                             }
@@ -211,9 +178,31 @@ macro_rules! parse_operation {
                                 return Err(ParsingError::ExpectedExpression);
                             }
                         }
-                        (None, _) => return Err(ParsingError::ExpectedExpression),
-                        (Some(expr), _) => expr,
+                        Some(expr) => expr,
+                        None => {
+                            if let Token::Add | Token::Sub = operation {
+                                Expression::Token(Token::Literal(dec!(0)))
+                            } else {
+                                return Err(ParsingError::ExpectedExpression);
+                            }
+                        }
                     };
+                    let mut exprs = next_expression!($expressions).into_iter();
+                    let next = match exprs.next() {
+                        Some(Expression::Token(token)) => {
+                            if token.is_value() {
+                                Expression::Token(token)
+                            }
+                            else {
+                                return Err(ParsingError::ExpectedExpression);
+                            }
+                        }
+                        Some(expr) => expr,
+                        None => return Err(ParsingError::ExpectedExpression)
+                    };
+                    if exprs.next().is_some() {
+                        return Err(ParsingError::InvalidComma);
+                    }
                     $buffer.push(Expression::Tree(ParseTree {
                         token: operation,
                         left: match last {
