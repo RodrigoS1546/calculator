@@ -29,53 +29,43 @@ impl TryFrom<char> for Token {
     type Error = ();
 
     fn try_from(value: char) -> Result<Self, ()> {
-        match value {
-            '+' => Ok(Self::Add),
-            '-' => Ok(Self::Sub),
-            '*' => Ok(Self::Mul),
-            ':' | '/' => Ok(Self::Div),
-            '^' => Ok(Self::Pow),
-            '√' => Ok(Self::Sqrt),
-            '!' => Ok(Self::Factorial),
-            '(' => Ok(Self::OpenParenthesis),
-            ')' => Ok(Self::CloseParenthesis),
-            ',' => Ok(Self::Comma),
-            _ => Err(()),
-        }
+        Ok(match value {
+            '+' => Self::Add,
+            '-' => Self::Sub,
+            '*' => Self::Mul,
+            ':' | '/' => Self::Div,
+            '^' => Self::Pow,
+            '√' => Self::Sqrt,
+            '!' => Self::Factorial,
+            '(' => Self::OpenParenthesis,
+            ')' => Self::CloseParenthesis,
+            ',' => Self::Comma,
+            _ => return Err(()),
+        })
     }
 }
 
 impl TryFrom<String> for Token {
     type Error = ();
 
-    fn try_from(value: String) -> Result<Self, ()> {
-        match value.parse::<Decimal>() {
-            Ok(x) => Ok(Self::Literal(x)),
-            Err(_) => {
-                if value.eq_ignore_ascii_case("ans") {
-                    Ok(Self::Ans)
-                } else if value.eq_ignore_ascii_case("pi") || value.eq_ignore_ascii_case("π") {
-                    Ok(Self::PI)
-                } else if value.eq_ignore_ascii_case("e") {
-                    Ok(Self::E)
-                } else if value.eq_ignore_ascii_case("sin") {
-                    Ok(Self::Sin)
-                } else if value.eq_ignore_ascii_case("cos") {
-                    Ok(Self::Cos)
-                } else if value.eq_ignore_ascii_case("tan") {
-                    Ok(Self::Tan)
-                } else if value.eq_ignore_ascii_case("ln") {
-                    Ok(Self::Ln)
-                } else if value.eq_ignore_ascii_case("log") {
-                    Ok(Self::Log)
-                } else if value.eq_ignore_ascii_case("exp") {
-                    Ok(Self::Exp)
-                } else if value.eq_ignore_ascii_case("sqrt") {
-                    Ok(Self::Sqrt)
-                } else {
-                    Err(())
-                }
-            }
+    fn try_from(mut value: String) -> Result<Self, ()> {
+        if value.chars().next().ok_or(())?.is_digit(10) {
+            Ok(Self::Literal(value.parse::<Decimal>().map_err(|_| ())?))
+        } else {
+            value.make_ascii_lowercase();
+            Ok(match value.as_str() {
+                "ans" => Self::Ans,
+                "pi" | "π" => Self::PI,
+                "e" => Self::E,
+                "sin" => Self::Sin,
+                "cos" => Self::Cos,
+                "tan" => Self::Tan,
+                "exp" => Self::Exp,
+                "ln" => Self::Ln,
+                "Log" => Self::Log,
+                "sqrt" => Self::Sqrt,
+                _ => return Err(())
+            })
         }
     }
 }
@@ -114,7 +104,6 @@ pub fn tokenize(source: String) -> Option<Vec<Token>> {
             }
             tokens.push(token);
         } else if c.is_digit(10) {
-            // tokenizing a decimal literal.
             let mut literal = String::new();
             literal.push(c);
             let mut dot_appeared = false;
