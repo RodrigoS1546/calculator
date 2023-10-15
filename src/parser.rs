@@ -53,10 +53,10 @@ enum Expression {
 }
 
 impl Expression {
-    fn unwrap_token(self) -> Token {
+    fn unwrap_token_unchecked(self) -> Token {
         match self {
             Self::Token(x) => x,
-            _ => panic!("Attempted to unwrap expression that was a tree."),
+            _ => unreachable!(),
         }
     }
 }
@@ -145,7 +145,7 @@ macro_rules! parse_function {
         while let (Some(expr), _) = $expressions.next_expression()? {
             match expr {
                 Expression::Token(Token::$fn $(| Token::$other_fn)*) => {
-                    let function = expr.unwrap_token();
+                    let function = expr.unwrap_token_unchecked();
                     let next = match $expressions.next_expression()? {
                         (Some(Expression::Token(token)), x) => {
                             if token.is_value() {
@@ -189,7 +189,7 @@ macro_rules! parse_operation {
         while let (Some(expr), _) = $expressions.next_expression()? {
             match expr {
                 Expression::Token(Token::$op $(| Token::$other_op)*) => {
-                    let operation = expr.unwrap_token();
+                    let operation = expr.unwrap_token_unchecked();
                     let last = if let Token::Add | Token::Sub = operation {
                         match $buffer.pop() {
                             Some(Expression::Token(token)) => {
