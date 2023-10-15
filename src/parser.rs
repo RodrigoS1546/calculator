@@ -102,6 +102,34 @@ macro_rules! next_expression {
     };
 }
 
+macro_rules! parse_factorial {
+    ($expressions:ident, $buffer:ident) => {
+        loop {
+            let expr = next_expression!($expressions);
+            if expr.len() == 0 {
+                break;
+            } else if expr.len() > 1 {
+                return Err(ParsingError::InvalidComma);
+            }
+            let expr = unsafe { expr.into_iter().next().unwrap_unchecked() };
+            match expr {
+                Expression::Token(Token::Factorial) => {
+                    let arg1 = $buffer.pop().ok_or(ParsingError::ExpectedExpression)?;
+                    $buffer.push(Expression::Tree(ParseTree {
+                        token: Token::Factorial,
+                        left: match arg1 {
+                            Expression::Token(lit) => Some(Box::new(ParseTree::new(lit))),
+                            Expression::Tree(tree) => Some(Box::new(tree)),
+                        },
+                        right: None,
+                    }));
+                }
+                _ => $buffer.push(expr)
+            }
+        }
+    };
+}
+
 macro_rules! parse_function {
     ($expressions:ident, $buffer:ident, $fn:ident $(, $other_fn:ident)*) => {
         loop {
@@ -226,6 +254,11 @@ fn parse_expressions(expressions: Vec<Expression>) -> Result<ParseTree, ParsingE
 
     let mut buffer = Vec::new();
 
+    parse_factorial!(expressions, buffer);
+
+    expressions = buffer.into_iter();
+    buffer = Vec::new();
+
     parse_function!(
         expressions,
         buffer,
@@ -235,8 +268,7 @@ fn parse_expressions(expressions: Vec<Expression>) -> Result<ParseTree, ParsingE
         Exp,
         Ln,
         Log,
-        Sqrt,
-        Factorial
+        Sqrt
     );
 
     expressions = buffer.into_iter();
