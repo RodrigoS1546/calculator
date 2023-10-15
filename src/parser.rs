@@ -1,5 +1,4 @@
 use std::fmt::Display;
-use std::vec::IntoIter;
 
 use crate::tokenizer::Token;
 use rust_decimal_macros::dec;
@@ -61,29 +60,16 @@ impl Expression {
     }
 }
 
-trait NextExpression {
-    fn next_expression(
-        self: &mut Self,
-    ) -> Result<(Option<Expression>, Option<Expression>), ParsingError>;
-}
-
-impl NextExpression for IntoIter<Expression> {
-    fn next_expression(
-        &mut self,
-    ) -> Result<(Option<Expression>, Option<Expression>), ParsingError> {
-        let expr = match self.next() {
-            Some(expr) => expr,
-            None => return Ok((None, None)),
-        };
-
-        match expr {
-            Expression::Token(Token::OpenParenthesis) => {
+macro_rules! next_expression {
+    ($iter:ident) => {
+        match $iter.next() {
+            Some(Expression::Token(Token::OpenParenthesis)) => {
                 let mut expression = Vec::new();
                 let mut expression2: Option<Vec<Expression>> = None;
                 let mut first = true;
                 let mut open_count = 1usize;
                 let mut close_count = 0usize;
-                while let Some(next) = self.next() {
+                while let Some(next) = $iter.next() {
                     match next {
                         Expression::Token(Token::OpenParenthesis) => {
                             open_count += 1;
@@ -130,23 +116,24 @@ impl NextExpression for IntoIter<Expression> {
                 } else {
                     None
                 };
-                return Ok((sub_tree, sub_tree2));
+                (sub_tree, sub_tree2)
             }
-            Expression::Token(Token::CloseParenthesis) => {
-                return Err(ParsingError::InvalidParenthesis)
+            Some(Expression::Token(Token::CloseParenthesis)) => {
+                return Err(ParsingError::InvalidParenthesis);
             }
-            _ => return Ok((Some(expr), None)),
+            Some(expr) => (Some(expr), None),
+            None => (None, None),
         }
-    }
+    };
 }
 
 macro_rules! parse_function {
     ($expressions:ident, $buffer:ident, $fn:ident $(, $other_fn:ident)*) => {
-        while let (Some(expr), _) = $expressions.next_expression()? {
+        while let (Some(expr), _) = next_expression!($expressions) {
             match expr {
                 Expression::Token(Token::$fn $(| Token::$other_fn)*) => {
                     let function = expr.unwrap_token_unchecked();
-                    let next = match $expressions.next_expression()? {
+                    let next = match next_expression!($expressions) {
                         (Some(Expression::Token(token)), x) => {
                             if token.is_value() {
                                 (Expression::Token(token), x)
@@ -186,7 +173,7 @@ macro_rules! parse_function {
 
 macro_rules! parse_operation {
     ($expressions:ident, $buffer:ident, $op:ident $(, $other_op:ident)*) => {
-        while let (Some(expr), _) = $expressions.next_expression()? {
+        while let (Some(expr), _) = next_expression!($expressions) {
             match expr {
                 Expression::Token(Token::$op $(| Token::$other_op)*) => {
                     let operation = expr.unwrap_token_unchecked();
@@ -215,7 +202,7 @@ macro_rules! parse_operation {
                         }
                     };
 
-                    let next = match $expressions.next_expression()? {
+                    let next = match next_expression!($expressions) {
                         (Some(Expression::Token(token)), _) => {
                             if token.is_value() {
                                 Expression::Token(token)
