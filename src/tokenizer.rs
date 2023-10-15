@@ -4,12 +4,14 @@ use rust_decimal::prelude::*;
 pub enum Token {
     Add,
     Sub,
+    ImplMul,
     Mul,
     Div,
     Pow,
     Sin,
     Cos,
     Tan,
+    Exp,
     Ln,
     Log,
     Sqrt,
@@ -30,7 +32,7 @@ impl TryFrom<char> for Token {
         match value {
             '+' => Ok(Self::Add),
             '-' => Ok(Self::Sub),
-            'x' | '*' => Ok(Self::Mul),
+            '*' => Ok(Self::Mul),
             ':' | '/' => Ok(Self::Div),
             '^' => Ok(Self::Pow),
             '√' => Ok(Self::Sqrt),
@@ -38,8 +40,7 @@ impl TryFrom<char> for Token {
             '(' => Ok(Self::OpenParenthesis),
             ')' => Ok(Self::CloseParenthesis),
             ',' => Ok(Self::Comma),
-            'e' => Ok(Self::E),
-            _ => Err(())
+            _ => Err(()),
         }
     }
 }
@@ -55,6 +56,8 @@ impl TryFrom<String> for Token {
                     Ok(Self::Ans)
                 } else if value.eq_ignore_ascii_case("pi") || value.eq_ignore_ascii_case("π") {
                     Ok(Self::PI)
+                } else if value.eq_ignore_ascii_case("e") {
+                    Ok(Self::E)
                 } else if value.eq_ignore_ascii_case("sin") {
                     Ok(Self::Sin)
                 } else if value.eq_ignore_ascii_case("cos") {
@@ -65,6 +68,8 @@ impl TryFrom<String> for Token {
                     Ok(Self::Ln)
                 } else if value.eq_ignore_ascii_case("log") {
                     Ok(Self::Log)
+                } else if value.eq_ignore_ascii_case("exp") {
+                    Ok(Self::Exp)
                 } else if value.eq_ignore_ascii_case("sqrt") {
                     Ok(Self::Sqrt)
                 } else {
@@ -91,11 +96,11 @@ pub fn tokenize(source: String) -> Option<Vec<Token>> {
     while let Some(c) = iterator.next() {
         if c.is_whitespace() {
             continue;
-        } else if c.is_alphabetic() && c != 'x' && c != 'e' {
+        } else if c.is_alphabetic() {
             let mut literal = String::with_capacity(3);
             literal.push(c);
             while let Some(&d) = iterator.peek() {
-                if d.is_alphabetic() && d != 'x' {
+                if d.is_alphabetic() {
                     literal.push(iterator.next().unwrap_or_default());
                 } else {
                     break;
@@ -104,7 +109,7 @@ pub fn tokenize(source: String) -> Option<Vec<Token>> {
             let token = literal.try_into().ok()?;
             if let Some(prev) = tokens.last() {
                 if prev.is_value() {
-                    tokens.push(Token::Mul);
+                    tokens.push(Token::ImplMul);
                 }
             }
             tokens.push(token);
@@ -135,17 +140,17 @@ pub fn tokenize(source: String) -> Option<Vec<Token>> {
             if let Token::OpenParenthesis | Token::Sqrt = token {
                 if let Some(prev) = tokens.last() {
                     if prev.is_value() {
-                        tokens.push(Token::Mul);
+                        tokens.push(Token::ImplMul);
                     }
                 }
-            }
-            else if let Token::Factorial = token {
+                tokens.push(token);
+            } else if let Token::Factorial = token {
                 let mut last_expr = Vec::new();
                 if let Some(token) = tokens.pop() {
                     if let Token::CloseParenthesis = token {
                         last_expr.push(token);
                         let mut open_count = 0usize;
-                        let mut close_count = 0usize;
+                        let mut close_count = 1usize;
                         loop {
                             let token = match tokens.pop() {
                                 Some(token) => token,
@@ -153,12 +158,11 @@ pub fn tokenize(source: String) -> Option<Vec<Token>> {
                             };
                             if let Token::OpenParenthesis = token {
                                 open_count += 1;
-                                if open_count > close_count {
+                                if open_count == close_count {
                                     last_expr.push(token);
                                     break;
                                 }
-                            }
-                            else if let Token::CloseParenthesis = token {
+                            } else if let Token::CloseParenthesis = token {
                                 close_count += 1;
                             }
                             last_expr.push(token);

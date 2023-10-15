@@ -81,7 +81,7 @@ impl NextExpression for IntoIter<Expression> {
                 let mut expression = Vec::new();
                 let mut expression2: Option<Vec<Expression>> = None;
                 let mut first = true;
-                let mut open_count = 0usize;
+                let mut open_count = 1usize;
                 let mut close_count = 0usize;
                 while let Some(next) = self.next() {
                     match next {
@@ -103,7 +103,7 @@ impl NextExpression for IntoIter<Expression> {
                         }
                         Expression::Token(Token::CloseParenthesis) => {
                             close_count += 1;
-                            if close_count > open_count {
+                            if close_count == open_count {
                                 break;
                             }
                             if first {
@@ -121,7 +121,7 @@ impl NextExpression for IntoIter<Expression> {
                         .push(next),
                     }
                 }
-                if close_count == open_count {
+                if close_count != open_count {
                     return Err(ParsingError::InvalidParenthesis);
                 }
                 let sub_tree = Some(Expression::Tree(parse_expressions(expression)?));
@@ -250,12 +250,28 @@ fn parse_expressions(expressions: Vec<Expression>) -> Result<ParseTree, ParsingE
 
     let mut buffer = Vec::new();
 
-    parse_function!(expressions, buffer, Sin, Cos, Tan, Ln, Log, Sqrt, Factorial);
+    parse_function!(
+        expressions,
+        buffer,
+        Sin,
+        Cos,
+        Tan,
+        Exp,
+        Ln,
+        Log,
+        Sqrt,
+        Factorial
+    );
 
     expressions = buffer.into_iter();
     buffer = Vec::new();
 
     parse_operation!(expressions, buffer, Pow);
+
+    expressions = buffer.into_iter();
+    buffer = Vec::new();
+
+    parse_operation!(expressions, buffer, ImplMul);
 
     expressions = buffer.into_iter();
     buffer = Vec::new();

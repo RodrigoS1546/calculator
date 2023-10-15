@@ -56,7 +56,7 @@ fn compute(tree: Option<Box<ParseTree>>, ans: Option<Decimal>) -> Result<Decimal
             Token::Sub => compute(tree.left, ans)?
                 .checked_sub(compute(tree.right, ans)?)
                 .ok_or(ComputeError::Overflow),
-            Token::Mul => compute(tree.left, ans)?
+            Token::Mul | Token::ImplMul => compute(tree.left, ans)?
                 .checked_mul(compute(tree.right, ans)?)
                 .ok_or(ComputeError::Overflow),
             Token::Div => {
@@ -79,6 +79,9 @@ fn compute(tree: Option<Box<ParseTree>>, ans: Option<Decimal>) -> Result<Decimal
                 .ok_or(ComputeError::Overflow),
             Token::Tan => compute(tree.left, ans)?
                 .checked_tan()
+                .ok_or(ComputeError::Overflow),
+            Token::Exp => Decimal::E
+                .checked_powd(compute(tree.left, ans)?)
                 .ok_or(ComputeError::Overflow),
             Token::Ln => compute(tree.left, ans)?
                 .checked_ln()
